@@ -42,20 +42,20 @@ jobs:
           if [ -f "upload/requirements.txt" ]; then pip install -r upload/requirements.txt; fi
       - name: Create .env
         run: |
-          echo "POLLINATIONS_API_KEY=\${{ secrets.POLLINATIONS_API_KEY }}" >> .env
+          echo "POLLINATIONS_API_KEY=${{ secrets.POLLINATIONS_API_KEY }}" >> .env
           echo "AI_MODEL=gemini-fast" >> .env
-          echo "YT_CLIENT_ID=\${{ secrets.YT_CLIENT_ID }}" >> .env
-          echo "YT_CLIENT_SECRET=\${{ secrets.YT_CLIENT_SECRET }}" >> .env
-          echo "YT_REFRESH_TOKEN=\${{ secrets.YT_REFRESH_TOKEN }}" >> .env
-          echo "INSTAGRAM_ACCESS_TOKEN=\${{ secrets.INSTAGRAM_ACCESS_TOKEN }}" >> .env
-          echo "INSTAGRAM_ACCOUNT_ID=\${{ secrets.INSTAGRAM_ACCOUNT_ID }}" >> .env
-          echo "FACEBOOK_ACCESS_TOKEN=\${{ secrets.FACEBOOK_ACCESS_TOKEN }}" >> .env
-          echo "FACEBOOK_PAGE_ID=\${{ secrets.FACEBOOK_PAGE_ID }}" >> .env
+          echo "YT_CLIENT_ID=${{ secrets.YT_CLIENT_ID }}" >> .env
+          echo "YT_CLIENT_SECRET=${{ secrets.YT_CLIENT_SECRET }}" >> .env
+          echo "YT_REFRESH_TOKEN=${{ secrets.YT_REFRESH_TOKEN }}" >> .env
+          echo "INSTAGRAM_ACCESS_TOKEN=${{ secrets.INSTAGRAM_ACCESS_TOKEN }}" >> .env
+          echo "INSTAGRAM_ACCOUNT_ID=${{ secrets.INSTAGRAM_ACCOUNT_ID }}" >> .env
+          echo "FACEBOOK_ACCESS_TOKEN=${{ secrets.FACEBOOK_ACCESS_TOKEN }}" >> .env
+          echo "FACEBOOK_PAGE_ID=${{ secrets.FACEBOOK_PAGE_ID }}" >> .env
       - name: Generate
         run: python lingexa_roots_bot.py
       - name: Upload
         run: |
-          export PYTHONPATH="\${{ github.workspace }}:\${{ github.workspace }}/upload:\$PYTHONPATH"
+          export PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/upload:$PYTHONPATH"
           python upload_all_platforms.py
       - name: Save history
         uses: actions/upload-artifact@v4
@@ -72,6 +72,6 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add -f output/history/all_generated_words.json
           if ! git diff --staged --quiet; then
-            git commit -m "Update history - Run #\${{ github.run_number }}"
+            git commit -m "Update history - Run #${{ github.run_number }}"
             git push
           fi
