@@ -101,7 +101,10 @@
     "geoid",
     "biomechanical",
     "biogeography",
-    "bionic"
+    "bionic",
+    "malformed",
+    "malfunction",
+    "bioluminescent"
   ],
-  "last_updated": "2026-07-08T15:58:42.122647"
+  "last_updated": "2026-07-08T19:12:38.758011"
 }
