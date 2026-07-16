@@ -218,7 +218,10 @@
     "insport",
     "opportune",
     "apport",
-    "transporter"
+    "transporter",
+    "attribute",
+    "subtract",
+    "retract"
   ],
-  "last_updated": "2026-07-16T15:25:22.144227"
+  "last_updated": "2026-07-16T19:00:10.693190"
 }
