@@ -9,7 +9,6 @@ def main():
     if os.path.exists(processed_dir):
         videos = [os.path.join(processed_dir, f) for f in os.listdir(processed_dir) if f.endswith(".mp4")]
     if not videos:
-        # Search output temp
         videos = glob.glob("output/**/*.mp4", recursive=True)
     
     if not videos:
@@ -22,10 +21,16 @@ def main():
     caption = "Daily automated video release #viral #reels"
     
     print("\n1. Uploading to Instagram...")
-    upload_to_instagram(latest_video, caption=caption)
+    try:
+        upload_to_instagram(latest_video, caption=caption)
+    except Exception as e:
+        print(f"Instagram upload error: {e}")
     
     print("\n2. Uploading to Facebook...")
-    upload_to_facebook(latest_video, caption=caption)
+    try:
+        upload_to_facebook(latest_video, caption)
+    except Exception as e:
+        print(f"Facebook upload error: {e}")
 
 if __name__ == "__main__":
     main()
