@@ -1,0 +1,17 @@
+name: Token Verify
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify IG token
+        run: |
+          curl -s "https://graph.facebook.com/v21.0/debug_token?input_token=${{ secrets.INSTAGRAM_ACCESS_TOKEN }}&access_token=${{ secrets.INSTAGRAM_ACCESS_TOKEN }}"
+          echo ""
+          echo "---"
+          curl -s "https://graph.facebook.com/v21.0/${{ secrets.INSTAGRAM_ACCOUNT_ID }}/media" -X POST \
+            -d "media_type=REELS" -d "upload_type=resumable" -d "share_to_feed=false" \
+            -d "access_token=${{ secrets.INSTAGRAM_ACCESS_TOKEN }}" -d "caption=verify"
+          echo ""
