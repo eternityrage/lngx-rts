@@ -3,7 +3,35 @@ Direct Resumable Instagram Reel & Story Uploader via Meta Graph API v21.0
 With Auto Payload Compression (<12MB) & Smart Container Processing Polling.
 100% Empirically Verified - Guarantees 0 Timeouts and 0 Processing Errors across all Repositories.
 """
-import os, sys, time, json, requests, pathlib, subprocess
+import os, sys, time, json, re, requests, pathlib, subprocess
+
+
+def _clean_caption(text, limit=2200):
+    if not text:
+        return ""
+    text = str(text)
+    text = text.replace("\x00", "").replace("\ufeff", "").replace("\u200b", "")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = []
+    seen_blank = False
+    for line in text.split("\n"):
+        stripped = line.lstrip()
+        if not stripped:
+            if not seen_blank and lines:
+                lines.append("")
+            seen_blank = True
+            continue
+        indent = line[:len(line) - len(stripped)]
+        collapsed = " ".join(stripped.split())
+        lines.append(indent + collapsed)
+        seen_blank = False
+    while lines and lines[0] == "":
+        lines.pop(0)
+    while lines and lines[-1] == "":
+        lines.pop()
+    result = "\n".join(lines)
+    return result[:limit].strip()
+
 
 def upload_to_instagram(video_path, caption="", is_story=False):
     media_type = 'STORIES' if is_story else 'REELS'
@@ -77,7 +105,7 @@ def upload_to_instagram(video_path, caption="", is_story=False):
         c_params = {
             'media_type': 'STORIES' if is_story else 'REELS',
             'upload_type': 'resumable',
-            'caption': caption[:2200] if caption else '',
+            'caption': _clean_caption(caption, 2200),
             'access_token': access_token
         }
         if not is_story:

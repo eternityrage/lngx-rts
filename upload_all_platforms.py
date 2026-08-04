@@ -222,63 +222,96 @@ def detect_phrase_source(phrases):
     return "ai"
 
 
+def sanitize_text(text, max_len=280):
+    if text is None:
+        return ""
+    text = str(text)
+    text = text.replace("\u200b", "").replace("\ufeff", "").replace("\x00", "")
+    text = " ".join(text.split())
+    return text[:max_len].strip()
+
+
+def sanitize_hashtag(text):
+    cleaned = sanitize_text(text)
+    cleaned = "".join(c for c in cleaned if c.isalnum())
+    return cleaned.lower()
+
+
+def clean_hashtags(tags):
+    seen = []
+    for t in tags:
+        t = sanitize_hashtag(t)
+        if not t:
+            continue
+        if t in seen:
+            continue
+        seen.append(t)
+    return ["#" + t for t in seen]
+
+
 def generate_caption(phrases, category, lang_field="native", words=None, metadata=None, platform="facebook"):
     if metadata and metadata.get("story"):
-        story_gr = metadata.get("story_gr", "")
-        story_en = metadata.get("story", "")
-        topic = metadata.get("topic", "History")
+        story_gr = sanitize_text(metadata.get("story_gr", ""))
+        story_en = sanitize_text(metadata.get("story", ""))
+        topic = sanitize_text(metadata.get("topic", "History"))
         tag = "ancienthistory"
         base = [f"Ancient History: {topic}", ""]
         if story_gr:
-            base.append(story_gr.strip())
+            base.append(story_gr)
             base.append("")
             base.append("--- English Translation ---")
             base.append("")
         if story_en:
-            base.append(story_en.strip())
+            base.append(story_en)
             base.append("")
         base.extend(["Like & follow for daily history!", ""])
-        base.extend(["#" + tag, "#history", "#ancienthistory", "#greekhistory", "#womenshistory"])
+        base.extend(clean_hashtags([tag, "history", "ancienthistory", "greekhistory", "womenshistory"]))
         return "\n".join(base)
     if words:
-        channel = category
-        tag = channel.lower().replace(" ", "")
-        base = [f"{channel.upper()} - Unlock English Vocabulary!", "", f"Today's words:", ""]
+        channel = sanitize_text(category)
+        tag = sanitize_hashtag(channel)
+        base = [f"{channel.upper()} - Unlock English Vocabulary!", "", "Today's words:", ""]
         for i, w in enumerate(words[:3], 1):
-            word = w.get("word", "")
-            root = w.get("root", "")
-            root_m = w.get("root_meaning", "")
-            pos = w.get("part_of_speech", "")
-            definition = w.get("definition", "")
-            example = w.get("example", "")
-            base.append(f"{i}. {word.upper()} ({pos})")
-            base.append(f"   {definition}")
+            word = sanitize_text(w.get("word", ""))
+            root = sanitize_text(w.get("root", ""))
+            root_m = sanitize_text(w.get("root_meaning", ""))
+            pos = sanitize_text(w.get("part_of_speech", ""))
+            definition = sanitize_text(w.get("definition", ""))
+            example = sanitize_text(w.get("example", ""))
+            if pos:
+                head = f"{i}. {word.upper()} ({pos})"
+            else:
+                head = f"{i}. {word.upper()}"
+            base.append(head)
+            if definition:
+                base.append(f"   {definition}")
             if root and root_m:
                 base.append(f"   Root: {root} = {root_m}")
-            base.append(f"   \"{example}\"")
+            if example:
+                base.append(f"   \"{example}\"")
             base.append("")
         base.extend(["Like & follow for daily vocabulary!", ""])
-        base.extend([f"#{tag}", f"#{tag}daily", "#vocabulary", "#englishlearning", "#wordroots", "#learnenglish"])
+        base.extend(clean_hashtags([tag, tag + "daily", "vocabulary", "englishlearning", "wordroots", "learnenglish"]))
         return "\n".join(base)
-    lang_name = get_language_name(phrases, lang_field)
-    lang_tag = lang_name.lower().replace(" ", "")
+    lang_name = sanitize_text(get_language_name(phrases, lang_field))
+    lang_tag = sanitize_hashtag(lang_name)
     if platform == "instagram":
         base = [f"Learn {lang_name} with VELOCITY {lang_name.upper()}!", "", f"Category: {category}", ""]
         for i, p in enumerate(phrases[:3], 1):
-            base.append(f"{i}. {p['english']}")
-            base.append(f"   {p.get(lang_field, '')}")
+            base.append(f"{i}. {sanitize_text(p.get('english', ''))}")
+            base.append(f"   {sanitize_text(p.get(lang_field, ''))}")
             base.append("")
         base.extend(["Which phrase is your favorite? 👇", f"Follow for daily {lang_name} lessons!", ""])
-        base.extend([f"#learn{lang_tag}", f"#{lang_tag}lessons", "#languagelearning", f"#velocity{lang_tag}", f"#daily{lang_tag}"])
+        base.extend(clean_hashtags(["learn" + lang_tag, lang_tag + "lessons", "languagelearning", "velocity" + lang_tag, "daily" + lang_tag]))
         return "\n".join(base)
     base = [f"Learn {lang_name} with VELOCITY {lang_name.upper()}!", "", f"Category: {category}", "", f"Master {lang_name} one phrase at a time! Today's {category} lesson:", ""]
     for i, p in enumerate(phrases[:5], 1):
-        base.append(f"{i}. {p['english']}")
-        base.append(f"   {p.get(lang_field, '')}")
-        base.append(f"   [{p.get('transliteration', '')}]")
+        base.append(f"{i}. {sanitize_text(p.get('english', ''))}")
+        base.append(f"   {sanitize_text(p.get(lang_field, ''))}")
+        base.append(f"   [{sanitize_text(p.get('transliteration', ''))}]")
         base.append("")
     base.extend(["Tip: Repeat each phrase out loud 3 times!", "Like this video if you learned something new!", "Comment your favorite phrase below!", "Follow for daily lessons!", ""])
-    base.extend([f"#learn{lang_tag}", f"#{lang_tag}lessons", f"#{lang_tag}forbeginners", "#languagelearning", f"#{lang_tag}vocabulary", f"#velocity{lang_tag}", f"#daily{lang_tag}", f"#{lang_tag}", "#learnlanguages"])
+    base.extend(clean_hashtags(["learn" + lang_tag, lang_tag + "lessons", lang_tag + "forbeginners", "languagelearning", lang_tag + "vocabulary", "velocity" + lang_tag, "daily" + lang_tag, lang_tag, "learnlanguages"]))
     return "\n".join(base)
 
 
