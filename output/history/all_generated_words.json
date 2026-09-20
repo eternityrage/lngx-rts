@@ -1128,7 +1128,10 @@
     "aggressive",
     "megastore",
     "supraport",
-    "technoscope"
+    "technoscope",
+    "underreport",
+    "overreport",
+    "architect"
   ],
-  "last_updated": "2026-09-20T17:05:59.661114"
+  "last_updated": "2026-09-20T20:05:57.081447"
 }
