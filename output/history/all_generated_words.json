@@ -1253,7 +1253,9 @@
     "concur",
     "moport",
     "foreport",
-    "soundproof"
+    "soundproof",
+    "peruse",
+    "telephoneable"
   ],
-  "last_updated": "2026-10-01T08:01:48.087671"
+  "last_updated": "2026-10-01T12:22:17.429443"
 }
