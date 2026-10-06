@@ -136,10 +136,27 @@ Return ONLY the JSON array."""
                 return collected[:num_words]
         except Exception as e:
             print(f"[api] Attempt {attempt + 1} FAILED: {e}")
+    if len(collected) < num_words:
+        print("[fallback] Checking curated roots bank for unused words...")
+        fallback_roots = [
+            {"word": "equanimity", "root": "equi", "root_meaning": "equal / even", "part_of_speech": "noun", "definition": "calmness and composure", "example": "She handled the crisis with equanimity.", "explanation": "Equi means equal and animus means mind, so equanimity is an even mind under stress."},
+            {"word": "magnanimous", "root": "magn", "root_meaning": "large / great", "part_of_speech": "adjective", "definition": "generous or forgiving", "example": "He was magnanimous in victory.", "explanation": "Magnus means large and animus means spirit, so magnanimous is having a great spirit."},
+            {"word": "veracity", "root": "ver", "root_meaning": "truth", "part_of_speech": "noun", "definition": "habitual truthfulness", "example": "Officials questioned the veracity of the claim.", "explanation": "Ver means true, so veracity is adherence to the truth."},
+            {"word": "loquacious", "root": "loqu", "root_meaning": "to speak", "part_of_speech": "adjective", "definition": "tending to talk a great deal", "example": "The loquacious host entertained everyone.", "explanation": "Loqui means to speak, so loquacious describes someone full of talk."},
+            {"word": "circumspect", "root": "spect", "root_meaning": "to look", "part_of_speech": "adjective", "definition": "wary and unwilling to take risks", "example": "They took a circumspect approach.", "explanation": "Circum means around and spect means look, so circumspect is looking all around carefully."}
+        ]
+        for fb in fallback_roots:
+            w_clean = fb["word"].lower().strip()
+            if w_clean not in used_set:
+                collected.append(fb)
+                used_set.add(w_clean)
+                print(f"  [fallback] Added unused curated root word: '{w_clean}'")
+                if len(collected) >= num_words:
+                    break
     if collected:
         add_words_to_history([w["word"] for w in collected])
         return collected
-    raise RuntimeError("API failed all attempts")
+    raise RuntimeError("API failed all attempts and no unused fallbacks available")
 
 def create_background():
     from PIL import Image, ImageDraw
