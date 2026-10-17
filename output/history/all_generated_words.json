@@ -1438,7 +1438,10 @@
     "behavior",
     "teleportation",
     "aquaduct",
-    "conflexure"
+    "conflexure",
+    "syntax",
+    "wordy",
+    "eject"
   ],
-  "last_updated": "2026-10-17T13:27:51.219180"
+  "last_updated": "2026-10-17T16:44:42.197707"
 }
