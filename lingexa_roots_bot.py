@@ -47,7 +47,9 @@ def save_word_history(data):
 
 def is_word_used(word):
     history = load_word_history()
-    return word.lower().strip() in [w.lower().strip() for w in history.get("words", [])]
+    all_used = history.get("words", [])
+    recent_words = all_used[-80:] if len(all_used) > 80 else all_used
+    return word.lower().strip() in [w.lower().strip() for w in recent_words]
 
 def add_words_to_history(words):
     history = load_word_history()
@@ -70,23 +72,23 @@ def generate_word_data(num_words=WORDS_PER_VIDEO):
         "Greek roots (phone, scope, techno, mega)",
         "Latin roots (fac, fact, fect, flict, flex)",
         "Latin roots (aud, voc, spir, aqua, cent)",
+        "Latin roots (gen, nat, mort, viv, vit)",
+        "Greek roots (tele, polis, aster, astr, derm)",
     ]
     collected = []
+    history = load_word_history()
+    all_used = history.get("words", [])
+    recent_window = all_used[-60:] if len(all_used) > 60 else all_used
+    used_set = set(w.lower().strip() for w in recent_window)
+
     for attempt in range(max_attempts):
         try:
             import requests
-            url = "https://gen.pollinations.ai/v1/chat/completions"
-            headers = {"Authorization": f"Bearer {POLLINATIONS_API_KEY}", "Content-Type": "application/json"}
             cat = categories[attempt % len(categories)]
             remaining = num_words - len(collected)
             print(f"[api] Attempt {attempt + 1}: {cat} (need {remaining} more)")
-            history = load_word_history()
-            all_used = history.get("words", [])
-            used_set = set()
-            for w in all_used:
-                used_set.add(w.lower().strip())
-            used_set.update([w["word"].lower().strip() for w in collected])
-            context = list(used_set)[-50:] if len(used_set) > 50 else list(used_set)
+            
+            context = list(used_set)[-30:] if len(used_set) > 30 else list(used_set)
             used_str = ", ".join(context) if context else "(none)"
             prompt = f"""Generate exactly 15 English words from {cat}.
 
@@ -99,16 +101,37 @@ STRICT RULES:
 CRITICAL for 'explanation': Write a SHORT natural sentence explaining BOTH the root AND the rest of the word. NO symbols, NO arrows, NO equals signs. Plain English only.
 Good example: "Bene means good and volence means wishing, so benevolence is wishing good upon others."
 Good example: "Mal means bad and volent means wishing, so malevolent describes someone who wishes bad things."
-Bad example: "bene=good so benevolence means good"
-Bad example: "Mal means bad, so a malady is a bad condition." (only explains root, not the whole word)
 
 Format:
 [{{"word":"benevolence","root":"bene","root_meaning":"good","part_of_speech":"noun","definition":"kindness and charity","example":"She showed benevolence.","explanation":"Bene means good and volence means wishing, so benevolence is wishing good upon others."}}]
 
-Return ONLY the JSON array.""" 
-            payload = {"model": AI_MODEL, "messages": [{"role": "system", "content": "Return ONLY valid JSON arrays."}, {"role": "user", "content": prompt}], "temperature": 1.2}
-            resp = requests.post(url, headers=headers, json=payload, timeout=60)
-            resp.raise_for_status()
+Return ONLY the JSON array."""
+            payload = {
+                "model": AI_MODEL,
+                "messages": [
+                    {"role": "system", "content": "Return ONLY valid JSON arrays."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 1.1
+            }
+
+            endpoints = [
+                ("https://gen.pollinations.ai/v1/chat/completions", {"Authorization": f"Bearer {POLLINATIONS_API_KEY}", "Content-Type": "application/json"}),
+                ("https://text.pollinations.ai/openai/chat/completions", {"Authorization": f"Bearer {POLLINATIONS_API_KEY}", "Content-Type": "application/json"}),
+            ]
+
+            resp = None
+            for ep_url, ep_headers in endpoints:
+                try:
+                    resp = requests.post(ep_url, headers=ep_headers, json=payload, timeout=45)
+                    if resp.status_code == 200:
+                        break
+                except Exception as ep_err:
+                    print(f"  [api] Endpoint {ep_url} error: {ep_err}")
+
+            if not resp or resp.status_code != 200:
+                raise RuntimeError(f"API endpoints failed (status {resp.status_code if resp else 'No response'})")
+
             content = resp.json()["choices"][0]["message"]["content"].strip()
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
@@ -120,14 +143,13 @@ Return ONLY the JSON array."""
             fresh = []
             for w in words:
                 word = w.get("word", "").strip()
-                if not word:
+                if not word or len(word.split()) > 1:
                     continue
-                if len(word.split()) > 1:
-                    continue
-                if word.lower().strip() in used_set:
+                w_lower = word.lower().strip()
+                if w_lower in used_set:
                     continue
                 fresh.append(w)
-                used_set.add(word.lower().strip())
+                used_set.add(w_lower)
                 if len(collected) + len(fresh) >= num_words:
                     break
             collected.extend(fresh)
@@ -136,15 +158,19 @@ Return ONLY the JSON array."""
                 return collected[:num_words]
         except Exception as e:
             print(f"[api] Attempt {attempt + 1} FAILED: {e}")
+
+    fallback_roots = [
+        {"word": "equanimity", "root": "equi", "root_meaning": "equal / even", "part_of_speech": "noun", "definition": "calmness and composure", "example": "She handled the crisis with equanimity.", "explanation": "Equi means equal and animus means mind, so equanimity is an even mind under stress."},
+        {"word": "magnanimous", "root": "magn", "root_meaning": "large / great", "part_of_speech": "adjective", "definition": "generous or forgiving", "example": "He was magnanimous in victory.", "explanation": "Magnus means large and animus means spirit, so magnanimous is having a great spirit."},
+        {"word": "veracity", "root": "ver", "root_meaning": "truth", "part_of_speech": "noun", "definition": "habitual truthfulness", "example": "Officials questioned the veracity of the claim.", "explanation": "Ver means true, so veracity is adherence to the truth."},
+        {"word": "loquacious", "root": "loqu", "root_meaning": "to speak", "part_of_speech": "adjective", "definition": "tending to talk a great deal", "example": "The loquacious host entertained everyone.", "explanation": "Loqui means to speak, so loquacious describes someone full of talk."},
+        {"word": "circumspect", "root": "spect", "root_meaning": "to look", "part_of_speech": "adjective", "definition": "wary and unwilling to take risks", "example": "They took a circumspect approach.", "explanation": "Circum means around and spect means look, so circumspect is looking all around carefully."},
+        {"word": "benevolent", "root": "bene", "root_meaning": "good / well", "part_of_speech": "adjective", "definition": "well meaning and kindly", "example": "A benevolent smile lit her face.", "explanation": "Bene means good and volens means wishing, so benevolent is wishing good to others."},
+        {"word": "omnipotent", "root": "omni", "root_meaning": "all / every", "part_of_speech": "adjective", "definition": "having unlimited power", "example": "An omnipotent ruler led the empire.", "explanation": "Omni means all and potens means powerful, so omnipotent means all powerful."},
+        {"word": "symbiosis", "root": "bio", "root_meaning": "life", "part_of_speech": "noun", "definition": "interaction between two organisms", "example": "The two species live in symbiosis.", "explanation": "Syn means together and bios means life, so symbiosis is living together in harmony."}
+    ]
     if len(collected) < num_words:
         print("[fallback] Checking curated roots bank for unused words...")
-        fallback_roots = [
-            {"word": "equanimity", "root": "equi", "root_meaning": "equal / even", "part_of_speech": "noun", "definition": "calmness and composure", "example": "She handled the crisis with equanimity.", "explanation": "Equi means equal and animus means mind, so equanimity is an even mind under stress."},
-            {"word": "magnanimous", "root": "magn", "root_meaning": "large / great", "part_of_speech": "adjective", "definition": "generous or forgiving", "example": "He was magnanimous in victory.", "explanation": "Magnus means large and animus means spirit, so magnanimous is having a great spirit."},
-            {"word": "veracity", "root": "ver", "root_meaning": "truth", "part_of_speech": "noun", "definition": "habitual truthfulness", "example": "Officials questioned the veracity of the claim.", "explanation": "Ver means true, so veracity is adherence to the truth."},
-            {"word": "loquacious", "root": "loqu", "root_meaning": "to speak", "part_of_speech": "adjective", "definition": "tending to talk a great deal", "example": "The loquacious host entertained everyone.", "explanation": "Loqui means to speak, so loquacious describes someone full of talk."},
-            {"word": "circumspect", "root": "spect", "root_meaning": "to look", "part_of_speech": "adjective", "definition": "wary and unwilling to take risks", "example": "They took a circumspect approach.", "explanation": "Circum means around and spect means look, so circumspect is looking all around carefully."}
-        ]
         for fb in fallback_roots:
             w_clean = fb["word"].lower().strip()
             if w_clean not in used_set:
@@ -153,10 +179,14 @@ Return ONLY the JSON array."""
                 print(f"  [fallback] Added unused curated root word: '{w_clean}'")
                 if len(collected) >= num_words:
                     break
-    if collected:
-        add_words_to_history([w["word"] for w in collected])
-        return collected
-    raise RuntimeError("API failed all attempts and no unused fallbacks available")
+
+    while len(collected) < num_words:
+        candidate = fallback_roots[len(collected) % len(fallback_roots)]
+        collected.append(candidate)
+        print(f"  [fallback-guarantee] Added fallback root word: '{candidate['word']}'")
+
+    add_words_to_history([w["word"] for w in collected[:num_words]])
+    return collected[:num_words]
 
 def create_background():
     from PIL import Image, ImageDraw
@@ -439,7 +469,7 @@ def create_video(image_files, audio_files, out_file):
     with open(cf, "w") as f:
         for c in clips:
             f.write(f"file '{str(c.resolve()).replace(chr(92), chr(47))}'\n")
-    subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(cf), "-c", "copy", str(out_file)], capture_output=True)
+    subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(cf), "-c", "copy", "-movflags", "+faststart", str(out_file)], capture_output=True)
     for c in clips:
         if c.exists(): c.unlink()
     if cf.exists(): cf.unlink()
